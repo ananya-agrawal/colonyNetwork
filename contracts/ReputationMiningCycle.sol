@@ -463,7 +463,6 @@ contract ReputationMiningCycle is PatriciaTreeProofs, DSMath {
     }
     uint nUpdates = (_nParents + 1) * 2;
     if (_amount < 0) {
-      //TODO: Never true currently. _amount needs to be an int.
       nUpdates += 2 * _nChildren;
     }
     reputationUpdateLog.push(ReputationLogEntry(
