@@ -31,9 +31,33 @@ contract ColonyNetworkMining is ColonyNetworkStorage {
     _;
   }
 
+  modifier stoppable() {
+    require(!inRepairMode, "colony-network-mining-is-in-repair-mode");
+    _;
+  }
+
+  modifier repair() {
+    require(inRepairMode, "colony-network-mining-not-in-repair-mode");
+    _;
+  }
+
+  function activateRepairMode() public auth {
+    inRepairMode = true;
+  }
+
+  function deactivateRepairMode() public auth {
+    inRepairMode = false;
+  }
+
+  function isInRepairMode() public view returns (bool) {
+    return inRepairMode;
+  }
+
   function setReputationRootHash(bytes32 newHash, uint256 newNNodes, address[] stakers) public
+  stoppable
   onlyReputationMiningCycle
   {
+    reputationRootHashHistory.push(ReputationRootHash(newHash, newNNodes));
     reputationRootHash = newHash;
     reputationRootHashNNodes = newNNodes;
     // Reward stakers
@@ -42,14 +66,46 @@ contract ColonyNetworkMining is ColonyNetworkStorage {
     rewardStakers(stakers);
   }
 
+  function getReputationRootHashHistory(uint256 i) public view returns (bytes32, uint256) {
+    return (reputationRootHashHistory[i].rootHash, reputationRootHashHistory[i].nNodes);
+  }
+
+  function getReputationRootHashHistoryLength() public view returns (uint256) {
+    return reputationRootHashHistory.length;
+  }
+
+  function revertReputationRootHash() public auth repair {
+    ReputationRootHash memory rootHashHistoryItem = reputationRootHashHistory[reputationRootHashHistory.length - 2];
+    reputationRootHash = rootHashHistoryItem.rootHash;
+    reputationRootHashNNodes = rootHashHistoryItem.nNodes;
+    delete reputationRootHashHistory[reputationRootHashHistory.length - 1];
+  }
+
+  function migrateReputationUpdateLogs(
+    address _reputationMiningCycle,
+    bool _active,
+    uint256 _startingIndex,
+    uint256 _batchSize
+  ) public auth repair
+  {
+    address oldReputationMiningAddress = _active ? activeReputationMiningCycle : inactiveReputationMiningCycle;
+    ReputationMiningCycle(oldReputationMiningAddress).transferEntryLogsTo(_reputationMiningCycle, _active, _startingIndex, _batchSize);
+  }
+
+  function replaceReputationMiningCycles(address _activeReputationMiningCycle, address _inactiveReputationMiningCycle) public auth repair {
+    activeReputationMiningCycle = _activeReputationMiningCycle;
+    inactiveReputationMiningCycle = _inactiveReputationMiningCycle;
+    ReputationMiningCycle(activeReputationMiningCycle).resetWindow();
+  }
+
   function initialiseReputationMining() public {
     require(inactiveReputationMiningCycle == 0x0, "colony-reputation-mining-already-initialised");
     address clnyToken = IColony(metaColony).getToken();
     require(clnyToken != 0x0, "colony-reputation-mining-clny-token-invalid-address");
-    inactiveReputationMiningCycle = new ReputationMiningCycle(tokenLocking, clnyToken);
+    inactiveReputationMiningCycle = new ReputationMiningCycle(address(this), tokenLocking, clnyToken);
   }
 
-  function startNextCycle() public {
+  function startNextCycle() public stoppable {
     address clnyToken = IColony(metaColony).getToken();
     require(clnyToken != 0x0, "colony-reputation-mining-clny-token-invalid-address");
     require(activeReputationMiningCycle == 0x0, "colony-reputation-mining-still-active");
@@ -57,7 +113,7 @@ contract ColonyNetworkMining is ColonyNetworkStorage {
     // Inactive now becomes active
     activeReputationMiningCycle = inactiveReputationMiningCycle;
     ReputationMiningCycle(activeReputationMiningCycle).resetWindow();
-    inactiveReputationMiningCycle = new ReputationMiningCycle(tokenLocking, clnyToken);
+    inactiveReputationMiningCycle = new ReputationMiningCycle(address(this), tokenLocking, clnyToken);
   }
 
   function getReputationMiningCycle(bool _active) public view returns(address) {

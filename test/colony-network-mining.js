@@ -4,7 +4,15 @@ import path from "path";
 import BN from "bn.js";
 import { TruffleLoader } from "@colony/colony-js-contract-loader-fs";
 
-import { forwardTime, checkErrorRevert, web3GetTransactionReceipt, makeReputationKey, makeReputationValue } from "../helpers/test-helper";
+import {
+  forwardTime,
+  checkErrorRevert,
+  web3GetTransactionReceipt,
+  makeReputationKey,
+  makeReputationValue,
+  getTokenArgs,
+  currentBlockTime
+} from "../helpers/test-helper";
 import { giveUserCLNYTokens, giveUserCLNYTokensAndStake, setupRatedTask, fundColonyWithTokens } from "../helpers/test-data-generator";
 
 import ReputationMiner from "../packages/reputation-miner/ReputationMiner";
@@ -2830,5 +2838,270 @@ contract("ColonyNetworkMining", accounts => {
     });
 
     it.skip("should abort if a deposit did not complete correctly");
+  });
+
+  describe("when in repair mode", async () => {
+    it("should be able to enter repair mode and exit repair mode", async () => {
+      await colonyNetwork.activateRepairMode();
+      let isInRepairMode = await colonyNetwork.isInRepairMode();
+      assert(isInRepairMode, "Not in repare mode");
+
+      await colonyNetwork.deactivateRepairMode();
+
+      isInRepairMode = await colonyNetwork.isInRepairMode();
+      assert(!isInRepairMode, "Still in repare mode");
+    });
+
+    it("should not be able to call function that are not allowed in repair mode", async () => {
+      await colonyNetwork.activateRepairMode();
+
+      const repCycleAddress = await colonyNetwork.getReputationMiningCycle(false);
+      const repCycle = await ReputationMiningCycle.at(repCycleAddress);
+
+      await checkErrorRevert(colonyNetwork.startNextCycle(), "colony-network-mining-is-in-repair-mode");
+      await checkErrorRevert(colonyNetwork.setReputationRootHash("0x00", 0, []), "colony-network-mining-is-in-repair-mode");
+
+      await checkErrorRevert(repCycle.submitRootHash("0x00", 0, 0), "colony-network-mining-is-in-repair-mode");
+      await checkErrorRevert(repCycle.confirmNewHash(0), "colony-network-mining-is-in-repair-mode");
+      await checkErrorRevert(repCycle.invalidateHash(0, 0), "colony-network-mining-is-in-repair-mode");
+      await checkErrorRevert(repCycle.respondToBinarySearchForChallenge(0, 0, "0x00", 0, []), "colony-network-mining-is-in-repair-mode");
+      await checkErrorRevert(
+        repCycle.respondToChallenge([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "0x00", [], "0x00", [], "0x00", [], "0x00", "0x00", []),
+        "colony-network-mining-is-in-repair-mode"
+      );
+      await checkErrorRevert(repCycle.submitJustificationRootHash(0, 0, "0x00", 0, [], 0, []), "colony-network-mining-is-in-repair-mode");
+
+      await colonyNetwork.deactivateRepairMode();
+    });
+
+    it("should not be able to move entry logs if caller is not colony network", async () => {
+      await colonyNetwork.activateRepairMode();
+      const repCycleAddress = await colonyNetwork.getReputationMiningCycle(false);
+      const repCycle = await ReputationMiningCycle.at(repCycleAddress);
+
+      await checkErrorRevert(repCycle.transferEntryLogsTo("0x0", false, 0, 1), "reputation-mining-cycle-caller-not-colony-network");
+      await colonyNetwork.deactivateRepairMode();
+    });
+
+    it("should not be able to push reputation update log if caller is not colony network", async () => {
+      await colonyNetwork.activateRepairMode();
+      const repCycleAddress = await colonyNetwork.getReputationMiningCycle(false);
+      const repCycle = await ReputationMiningCycle.at(repCycleAddress);
+
+      await checkErrorRevert(
+        repCycle.pushReputationUpdateLog("0x0", 0, 0, "0x0", 0, 0, false),
+        "reputation-mining-cycle-caller-not-reputation-mining-cycle"
+      );
+      await colonyNetwork.deactivateRepairMode();
+    });
+
+    it("should be able to revert reputation root hash", async () => {
+      await giveUserCLNYTokensAndStake(colonyNetwork, MAIN_ACCOUNT, new BN("1000000000000000000"));
+
+      const repCycleAddress = await colonyNetwork.getReputationMiningCycle(true);
+      await forwardTime(3600, this);
+      const repCycle = await ReputationMiningCycle.at(repCycleAddress);
+      await repCycle.submitRootHash("0x12345678", 10, 10);
+      await repCycle.confirmNewHash(0);
+
+      let rootHash = await colonyNetwork.getReputationRootHash();
+      assert.equal(rootHash, "0x1234567800000000000000000000000000000000000000000000000000000000");
+
+      await colonyNetwork.activateRepairMode();
+
+      await colonyNetwork.revertReputationRootHash();
+      rootHash = await colonyNetwork.getReputationRootHash();
+      assert.equal(rootHash, "0x0000000000000000000000000000000000000000000000000000000000000000");
+
+      await colonyNetwork.deactivateRepairMode();
+    });
+
+    it("should be able to migrate reputation update logs", async () => {
+      const tokenArgs = getTokenArgs();
+      const token = await Token.new(...tokenArgs);
+      const { logs } = await colonyNetwork.createColony(token.address);
+      const { colonyAddress } = logs[0].args;
+      const colony = await IColony.at(colonyAddress);
+      await token.mint(100000);
+      await token.transfer(colony.address, 100000);
+
+      await colony.bootstrapColony([MAIN_ACCOUNT], [100000]);
+
+      await colonyNetwork.activateRepairMode();
+
+      const repCycleAddress = await colonyNetwork.getReputationMiningCycle(false);
+      const repCycle = await ReputationMiningCycle.at(repCycleAddress);
+      const numOfEntries = await repCycle.getReputationUpdateLogLength();
+      const entry = await repCycle.getReputationUpdateLogEntry(0);
+
+      const tokenLockingAddress = await colonyNetwork.getTokenLocking();
+      const newReputationMiningCycle = await ReputationMiningCycle.new(colonyNetwork.address, tokenLockingAddress, clny.address);
+
+      await colonyNetwork.migrateReputationUpdateLogs(newReputationMiningCycle.address, false, 0, numOfEntries.toNumber());
+      const newNumOfEntries = await newReputationMiningCycle.getReputationUpdateLogLength();
+      const newEntry = await repCycle.getReputationUpdateLogEntry(0);
+      assert.equal(newNumOfEntries.toNumber(), numOfEntries.toNumber());
+
+      assert.equal(entry[0], newEntry[0]);
+      assert.equal(entry[1].toString(), newEntry[1].toString());
+      assert.equal(entry[2].toString(), newEntry[2].toString());
+      assert.equal(entry[3], newEntry[3]);
+      assert.equal(entry[4].toString(), newEntry[4].toString());
+      assert.equal(entry[5].toString(), newEntry[5].toString());
+
+      await colonyNetwork.deactivateRepairMode();
+    });
+
+    it("should be able to migrate reputation update logs in two parts", async () => {
+      const tokenArgs = getTokenArgs();
+      const token = await Token.new(...tokenArgs);
+      const { logs } = await colonyNetwork.createColony(token.address);
+      const { colonyAddress } = logs[0].args;
+      const colony = await IColony.at(colonyAddress);
+      const amount = 400000;
+      await token.mint(accounts.length * amount);
+      await token.transfer(colony.address, accounts.length * amount);
+
+      const amounts = accounts.map(() => amount / 4);
+      await colony.bootstrapColony(accounts, amounts);
+      await colony.bootstrapColony(accounts, amounts);
+      await colony.bootstrapColony(accounts, amounts);
+      await colony.bootstrapColony(accounts, amounts);
+
+      await colonyNetwork.activateRepairMode();
+
+      const repCycleAddress = await colonyNetwork.getReputationMiningCycle(false);
+      const repCycle = await ReputationMiningCycle.at(repCycleAddress);
+      const numOfEntries = await repCycle.getReputationUpdateLogLength();
+
+      const tokenLockingAddress = await colonyNetwork.getTokenLocking();
+      const newReputationMiningCycle = await ReputationMiningCycle.new(colonyNetwork.address, tokenLockingAddress, clny.address);
+
+      // Can't migrate all at once
+      await checkErrorRevert(colonyNetwork.migrateReputationUpdateLogs(newReputationMiningCycle.address, false, 0, numOfEntries.toNumber()));
+      // So we migrate in 2 parts. 49 total
+      const half = new BN(numOfEntries.toString()).divn(2).toNumber();
+      await colonyNetwork.migrateReputationUpdateLogs(newReputationMiningCycle.address, false, 0, half);
+      await colonyNetwork.migrateReputationUpdateLogs(newReputationMiningCycle.address, false, half, half + 1);
+      const newNumOfEntries = await newReputationMiningCycle.getReputationUpdateLogLength();
+      assert.equal(newNumOfEntries.toNumber(), numOfEntries.toNumber());
+
+      await colonyNetwork.deactivateRepairMode();
+    });
+
+    it("should be able to skip entry logs while migrating them", async () => {
+      const tokenArgs = getTokenArgs();
+      const token = await Token.new(...tokenArgs);
+      const { logs } = await colonyNetwork.createColony(token.address);
+      const { colonyAddress } = logs[0].args;
+      const colony = await IColony.at(colonyAddress);
+      await token.mint(100000);
+      await token.transfer(colony.address, 100000);
+
+      await colony.bootstrapColony([MAIN_ACCOUNT], [100000]);
+
+      await colonyNetwork.activateRepairMode();
+
+      const repCycleAddress = await colonyNetwork.getReputationMiningCycle(false);
+      const repCycle = await ReputationMiningCycle.at(repCycleAddress);
+      const entry = await repCycle.getReputationUpdateLogEntry(1);
+
+      const tokenLockingAddress = await colonyNetwork.getTokenLocking();
+      const newReputationMiningCycle = await ReputationMiningCycle.new(colonyNetwork.address, tokenLockingAddress, clny.address);
+
+      await colonyNetwork.migrateReputationUpdateLogs(newReputationMiningCycle.address, false, 1, 1);
+      const newNumOfEntries = await newReputationMiningCycle.getReputationUpdateLogLength();
+      assert.equal(newNumOfEntries.toNumber(), 1);
+
+      const newEntry = await newReputationMiningCycle.getReputationUpdateLogEntry(0);
+
+      assert.equal(entry[0], newEntry[0]);
+      assert.equal(entry[1].toString(), newEntry[1].toString());
+      assert.equal(entry[2].toString(), newEntry[2].toString());
+      assert.equal(entry[3], newEntry[3]);
+      assert.equal(entry[4].toString(), newEntry[4].toString());
+      assert.equal(entry[5].toString(), newEntry[5].toString());
+
+      await colonyNetwork.deactivateRepairMode();
+    });
+
+    it("should be able to set new reputation mining cycle contracts", async () => {
+      await colonyNetwork.activateRepairMode();
+
+      const tokenLockingAddress = await colonyNetwork.getTokenLocking();
+
+      const newActiveReputationMiningCycle = await ReputationMiningCycle.new(colonyNetwork.address, tokenLockingAddress, clny.address);
+      const newInactiveReputationMiningCycle = await ReputationMiningCycle.new(colonyNetwork.address, tokenLockingAddress, clny.address);
+
+      await colonyNetwork.replaceReputationMiningCycles(newActiveReputationMiningCycle.address, newInactiveReputationMiningCycle.address);
+
+      const newActiveReputationMiningCycleAddress = await colonyNetwork.getReputationMiningCycle(true);
+      const newInactiveReputationMiningCycleAddress = await colonyNetwork.getReputationMiningCycle(false);
+
+      assert.equal(newActiveReputationMiningCycle.address, newActiveReputationMiningCycleAddress);
+      assert.equal(newInactiveReputationMiningCycle.address, newInactiveReputationMiningCycleAddress);
+
+      const windowOpenTimestamp = await newActiveReputationMiningCycle.reputationMiningWindowOpenTimestamp();
+      const now = await currentBlockTime();
+
+      assert.closeTo(windowOpenTimestamp.toNumber(), now, 10);
+
+      await colonyNetwork.deactivateRepairMode();
+    });
+
+    it("should be able to continue reputation mining process after new setting new reputation mining contracts", async () => {
+      const tokenArgs = getTokenArgs();
+      const token = await Token.new(...tokenArgs);
+      const { logs } = await colonyNetwork.createColony(token.address);
+      const { colonyAddress } = logs[0].args;
+      const colony = await IColony.at(colonyAddress);
+      await token.mint(100000);
+      await token.transfer(colony.address, 100000);
+
+      await colony.bootstrapColony([MAIN_ACCOUNT], [100000]);
+
+      let activeRepCycleAddress = await colonyNetwork.getReputationMiningCycle(true);
+      let activeRepCycle = await ReputationMiningCycle.at(activeRepCycleAddress);
+
+      await giveUserCLNYTokensAndStake(colonyNetwork, MAIN_ACCOUNT, "1000000000000000000");
+      await forwardTime(3600, this);
+      await activeRepCycle.submitRootHash("0x00", 0, 10);
+      await activeRepCycle.confirmNewHash(0);
+
+      activeRepCycleAddress = await colonyNetwork.getReputationMiningCycle(true);
+      activeRepCycle = await ReputationMiningCycle.at(activeRepCycleAddress);
+      const inactiveRepCycleAddress = await colonyNetwork.getReputationMiningCycle(false);
+      const inactiveRepCycle = await ReputationMiningCycle.at(inactiveRepCycleAddress);
+
+      const numOfActiveEntries = await activeRepCycle.getReputationUpdateLogLength();
+      const numOfInactiveEntries = await inactiveRepCycle.getReputationUpdateLogLength();
+      assert.equal(numOfActiveEntries.toNumber(), 6);
+      // Just 1 log in newly created inactive log (reward for staker)
+      assert.equal(numOfInactiveEntries.toNumber(), 1);
+
+      await colonyNetwork.activateRepairMode();
+
+      const tokenLockingAddress = await colonyNetwork.getTokenLocking();
+      const newActiveReputationMiningCycle = await ReputationMiningCycle.new(colonyNetwork.address, tokenLockingAddress, clny.address);
+      const newInactiveReputationMiningCycle = await ReputationMiningCycle.new(colonyNetwork.address, tokenLockingAddress, clny.address);
+
+      await colonyNetwork.migrateReputationUpdateLogs(newActiveReputationMiningCycle.address, true, 0, numOfActiveEntries.toNumber());
+      const newNumOfEntries = await newActiveReputationMiningCycle.getReputationUpdateLogLength();
+      assert.equal(newNumOfEntries.toNumber(), numOfActiveEntries.toNumber());
+
+      await colonyNetwork.replaceReputationMiningCycles(newActiveReputationMiningCycle.address, newInactiveReputationMiningCycle.address);
+
+      await colonyNetwork.deactivateRepairMode();
+
+      await goodClient.addLogContentsToReputationTree();
+      await forwardTime(3600, this);
+      await goodClient.submitRootHash();
+
+      await newActiveReputationMiningCycle.confirmNewHash(0);
+
+      const localRootHash = await goodClient.getRootHash();
+      const rootHash = await colonyNetwork.getReputationRootHash();
+      assert.equal(localRootHash, rootHash);
+    });
   });
 });

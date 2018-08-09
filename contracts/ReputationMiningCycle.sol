@@ -87,6 +87,21 @@ contract ReputationMiningCycle is PatriciaTreeProofs, DSMath {
   // Otherwise, people could keep submitting the same entry.
   mapping (bytes32 => mapping(address => mapping(uint256 => bool))) submittedEntries;
 
+  modifier onlyColonyNetwork() {
+    require(msg.sender == colonyNetworkAddress, "reputation-mining-cycle-caller-not-colony-network");
+    _;
+  }
+
+  modifier repair() {
+    require(IColonyNetwork(colonyNetworkAddress).isInRepairMode(), "colony-network-mining-is-in-repair-mode");
+    _;
+  }
+
+  modifier stoppable() {
+    require(!IColonyNetwork(colonyNetworkAddress).isInRepairMode(), "colony-network-mining-is-in-repair-mode");
+    _;
+  }
+
   /// @notice A modifier that checks that the supplied `roundNumber` is the final round
   /// @param roundNumber The `roundNumber` to check if it is the final round
   modifier finalDisputeRoundCompleted(uint256 roundNumber) {
@@ -152,8 +167,8 @@ contract ReputationMiningCycle is PatriciaTreeProofs, DSMath {
   }
 
   /// @notice Constructor for this contract.
-  constructor(address _tokenLockingAddress, address _clnyTokenAddress) public {
-    colonyNetworkAddress = msg.sender;
+  constructor(address _colonyNetwoekAddress, address _tokenLockingAddress, address _clnyTokenAddress) public {
+    colonyNetworkAddress = _colonyNetwoekAddress;
     tokenLockingAddress = _tokenLockingAddress;
     clnyTokenAddress = _clnyTokenAddress;
   }
@@ -162,12 +177,54 @@ contract ReputationMiningCycle is PatriciaTreeProofs, DSMath {
     return keccak256(abi.encodePacked(submitter, entryIndex, newHash));
   }
 
+  function getReputationUpdateLogEntryLength() public view returns (uint256) {
+    return reputationUpdateLog.length;
+  }
+
+  function transferEntryLogsTo(address _reputationMiningCycle, bool _active, uint256 _startingIndex, uint256 _batchSize) public onlyColonyNetwork repair {
+    for (uint256 i = _startingIndex; i < add(_startingIndex, _batchSize); i++) {
+      ReputationLogEntry memory updateLog = reputationUpdateLog[i];
+      ReputationMiningCycle(_reputationMiningCycle).pushReputationUpdateLog(
+        updateLog.user,
+        updateLog.amount,
+        updateLog.skillId,
+        updateLog.colony,
+        updateLog.nUpdates,
+        updateLog.nPreviousUpdates,
+        _active
+      );
+    }
+  }
+
+  function pushReputationUpdateLog(
+    address _user,
+    int256 _amount,
+    uint256 _skillId,
+    address _colony,
+    uint256 _nUpdates,
+    uint256 _nPreviousUpdates,
+    bool _active
+  ) public repair
+  {
+    address currentReputationMiningCycle = IColonyNetwork(colonyNetworkAddress).getReputationMiningCycle(_active);
+    require(msg.sender == currentReputationMiningCycle, "reputation-mining-cycle-caller-not-reputation-mining-cycle");
+    reputationUpdateLog.push(ReputationLogEntry(
+      _user,
+      _amount,
+      _skillId,
+      _colony,
+      _nUpdates,
+      _nPreviousUpdates
+    ));
+  }
+
   function resetWindow() public {
     require(msg.sender == colonyNetworkAddress, "colony-reputation-mining-sender-not-network");
     reputationMiningWindowOpenTimestamp = now;
   }
 
   function submitRootHash(bytes32 newHash, uint256 nNodes, uint256 entryIndex) public
+  stoppable
   entryQualifies(newHash, nNodes, entryIndex)
   withinTarget(newHash, entryIndex)
   {
@@ -221,6 +278,7 @@ contract ReputationMiningCycle is PatriciaTreeProofs, DSMath {
   }
 
   function confirmNewHash(uint256 roundNumber) public
+  stoppable
   finalDisputeRoundCompleted(roundNumber)
   {
     // TODO: Require some amount of time to have passed (i.e. people have had a chance to submit other hashes)
@@ -233,7 +291,7 @@ contract ReputationMiningCycle is PatriciaTreeProofs, DSMath {
     selfdestruct(colonyNetworkAddress);
   }
 
-  function invalidateHash(uint256 round, uint256 idx) public {
+  function invalidateHash(uint256 round, uint256 idx) public stoppable {
     // What we do depends on our opponent, so work out which index it was at in disputeRounds[round]
     uint256 opponentIdx = (idx % 2 == 1 ? idx-1 : idx + 1);
     uint256 nInNextRound;
@@ -319,7 +377,7 @@ contract ReputationMiningCycle is PatriciaTreeProofs, DSMath {
     bytes jhIntermediateValue,
     uint256 branchMask,
     bytes32[] siblings
-  ) public
+  ) public stoppable
   {
     // TODO: Check this challenge is active.
     // This require is necessary, but not a sufficient check (need to check we have an opponent, at least).
@@ -367,6 +425,7 @@ contract ReputationMiningCycle is PatriciaTreeProofs, DSMath {
     bytes previousNewReputationValue,
     bytes32[] previousNewReputationSiblings
   ) public
+    stoppable
     challengeOpen(u[U_ROUND], u[U_IDX])
   {
     u[U_REQUIRE_REPUTATION_CHECK] = 0;
@@ -428,7 +487,7 @@ contract ReputationMiningCycle is PatriciaTreeProofs, DSMath {
     bytes32[] siblings1,
     uint256 branchMask2,
     bytes32[] siblings2
-  ) public
+  ) public stoppable
   {
     // Require we've not submitted already.
     require(disputeRounds[round][index].jrh == 0x0, "colony-reputation-mining-hash-already-submitted");
@@ -453,7 +512,7 @@ contract ReputationMiningCycle is PatriciaTreeProofs, DSMath {
     address _colonyAddress,
     uint256 _nParents,
     uint256 _nChildren
-  ) public
+  ) public stoppable
   {
     require(colonyNetworkAddress == msg.sender, "colony-reputation-mining-sender-not-network");
     uint reputationUpdateLogLength = reputationUpdateLog.length;
@@ -544,7 +603,7 @@ contract ReputationMiningCycle is PatriciaTreeProofs, DSMath {
     );
   }
 
-  function rewardStakersWithReputation(address[] stakers, address commonColonyAddress, uint256 reward, uint256 miningSkillId) public {
+  function rewardStakersWithReputation(address[] stakers, address commonColonyAddress, uint256 reward, uint256 miningSkillId) public stoppable {
     require(msg.sender == colonyNetworkAddress, "colony-reputation-mining-sender-not-network");
     require(reputationUpdateLog.length == 0, "colony-reputation-mining-log-length-non-zero");
     for (uint256 i = 0; i < stakers.length; i++) {

@@ -63,6 +63,10 @@ contract IReputationMiningCycle {
   /// @return entryHash The hash for the corresponding entry
   function getEntryHash(address submitter, uint256 entryIndex, bytes32 newHash) public pure returns (bytes32 entryHash);
 
+  /// Returns the length of log entry
+  /// @return length Length of log entry
+  function getReputationUpdateLogEntryLength() public view returns (uint256 length);
+
   /// @notice Resets the timestamp that the submission window opens to `now`
   /// @dev only allowed to be called by ColonyNetwork
   function resetWindow() public;
@@ -169,6 +173,33 @@ contract IReputationMiningCycle {
   /// @notice Get the length of the ReputationUpdateLog stored on this instance of the ReputationMiningCycle contract
   /// @return nUpdates
   function getReputationUpdateLogLength() public view returns (uint nUpdates);
+
+  /// @notice Transfer reputation entry logs from current mining cycle to new one
+  /// @dev Can only be called in repair mode by authorised address
+  /// @param _reputationMiningCycle New reputation mining cycle
+  /// @param _active Are we transfering logs from active or inactive mining cycle
+  /// @param _startingIndex Index of the starting log entry
+  /// @param _batchSize Number of logs we want to transfer
+  function transferEntryLogsTo(address _reputationMiningCycle, bool _active, uint256 _startingIndex, uint256 _batchSize) public;
+
+  /// @notice Push a single log entry to `reputationUpdateLog` array
+  /// @dev Can only be called in repair mode by authorised address
+  /// @param _user `user` property from `ReputationLogEntry` struct
+  /// @param _amount `amount` property from `ReputationLogEntry` struct
+  /// @param _skillId `skillId` property from `ReputationLogEntry` struct
+  /// @param _colony `colony` property from `ReputationLogEntry` struct
+  /// @param _nUpdates `nUpdates` property from `ReputationLogEntry` struct
+  /// @param _nPreviousUpdates `nPreviousUpdates` property from `ReputationLogEntry` struct
+  /// @param _active Are we pushing entry log inside active or inactive cycle
+  function pushReputationUpdateLog(
+    address _user,
+    int256 _amount,
+    uint256 _skillId,
+    address _colony,
+    uint256 _nUpdates,
+    uint256 _nPreviousUpdates,
+    bool _active
+    ) public;
 
   /// @notice Get the `ReputationLogEntry` at index `_id`
   /// @param _id The reputation log members array index of the entry to get

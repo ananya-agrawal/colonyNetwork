@@ -68,6 +68,14 @@ contract ColonyNetworkStorage is DSAuth, DSMath {
   bytes32 reputationRootHash;
   // The number of nodes in the reputation state tree that was accepted at the end of the last mining cycle
   uint256 reputationRootHashNNodes;
+
+  struct ReputationRootHash {
+    bytes32 rootHash;
+    uint256 nNodes;
+  }
+
+  ReputationRootHash[] reputationRootHashHistory;
+
   // Mapping containing how much has been staked by each user
   mapping (address => uint) stakedBalances;
 
@@ -86,6 +94,8 @@ contract ColonyNetworkStorage is DSAuth, DSMath {
   mapping (address => bytes32) colonyLabels;
   // Mapping from user address to claimed user label
   mapping (address => bytes32) userLabels;
+
+  bool inRepairMode;
 
   modifier calledByColony() {
     require(_isColony[msg.sender], "colony-must-be-colony");

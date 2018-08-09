@@ -146,11 +146,54 @@ contract IColonyNetwork {
   /// @return resolverAddress Address of the `Resolver` contract
   function getColonyVersionResolver(uint256 _version) public view returns (address resolverAddress);
 
+  /// @notice Activates repair mode
+  /// @dev Can only be called by authorised address
+  function activateRepairMode() public;
+
+  /// @notice Deactivates repair mode
+  /// @dev Can only be called by authorised address
+  function deactivateRepairMode() public;
+
+  /// @notice Is mining process in repair mode
+  /// @return inRepairMode Returns true if mining process is in repair mode, false otherwise
+  function isInRepairMode() public view returns (bool inRepairMode);
+
   /// @notice Set a new Reputation root hash and starts a new mining cycle. Can only be called by the ReputationMiningCycle contract.
   /// @param newHash The reputation root hash
   /// @param newNNodes The updated nodes count value
   /// @param stakers Array of users who submitted or backed the hash, being accepted here as the new reputation root hash
   function setReputationRootHash(bytes32 newHash, uint256 newNNodes, address[] stakers) public;
+
+  /// @notice Get reputation root hash history item
+  /// @param _index Index of reputation root hash
+  /// @return rootHash Reputation root hash
+  /// @return nNodes Number of nodes
+  function getReputationRootHashHistory(uint256 _index) public view returns (bytes32 rootHash, uint256 nNodes);
+
+  /// @notice Get length of reputation root hash history
+  /// @return length History length
+  function getReputationRootHashHistoryLength() public view returns (uint256 length);
+
+  /// @notice Reverts reputation root hash to previous one
+  /// @dev Can only be called in repair mode by authorised address
+  function revertReputationRootHash() public;
+
+  /// @notice Move reputation update logs to a new mining cycle contract
+  /// @dev Can only be called in repair mode by authorised address
+  /// @param _reputationMiningCycle Address of the new mining cycle
+  /// @param _active Are we migrating logs from active or inactive mining cycle
+  /// @param _startingIndex Index of the starting log entry
+  /// @param _batchSize Number of logs to move
+  function migrateReputationUpdateLogs(address _reputationMiningCycle, bool _active, uint256 _startingIndex, uint256 _batchSize) public;
+
+  /// @notice Replace current mining cycle contracts with new ones
+  /// @dev Can only be called in repair mode by authorised address
+  /// @param _activeReputationMiningCycle Address of new active reputation mining cycle
+  /// @param _inactiveReputationMiningCycle Address of new inactive reputation mining cycle
+  function replaceReputationMiningCycles(address _activeReputationMiningCycle, address _inactiveReputationMiningCycle) public;
+
+  /// @notice Creates initial inactive reputation mining cycle
+  function initialiseReputationMining() public;
 
   /// @notice Starts a new Reputation Mining cycle. Explicitly called only the first time,
   /// subsequently called from within `setReputationRootHash`
