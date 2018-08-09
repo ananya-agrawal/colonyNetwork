@@ -2916,6 +2916,44 @@ contract("ColonyNetworkMining", accounts => {
       await colonyNetwork.deactivateRepairMode();
     });
 
+    it("should set root hash to 0x0 and number of nodes to 0 if we are reverting the first accepted hash", async () => {
+      let numberOfHashes = await colonyNetwork.getReputationRootHashHistoryLength();
+
+      // Clearing all reputation root hash updates
+      await colonyNetwork.activateRepairMode();
+
+      for (let i = 0; i < numberOfHashes.toNumber(); i += 1) {
+        await colonyNetwork.revertReputationRootHash(); // eslint-disable-line no-await-in-loop
+      }
+
+      numberOfHashes = await colonyNetwork.getReputationRootHashHistoryLength();
+      assert.equal(numberOfHashes.toNumber(), 0);
+
+      let rootHash = await colonyNetwork.getReputationRootHash();
+      assert.equal(rootHash, "0x0000000000000000000000000000000000000000000000000000000000000000");
+
+      await colonyNetwork.deactivateRepairMode();
+
+      await giveUserCLNYTokensAndStake(colonyNetwork, MAIN_ACCOUNT, new BN("1000000000000000000"));
+
+      const repCycleAddress = await colonyNetwork.getReputationMiningCycle(true);
+      await forwardTime(3600, this);
+      const repCycle = await ReputationMiningCycle.at(repCycleAddress);
+      // Setting this to be first item in root hash history array
+      await repCycle.submitRootHash("0x12345678", 10, 10);
+      await repCycle.confirmNewHash(0);
+
+      rootHash = await colonyNetwork.getReputationRootHash();
+      assert.equal(rootHash, "0x1234567800000000000000000000000000000000000000000000000000000000");
+
+      await colonyNetwork.activateRepairMode();
+      await colonyNetwork.revertReputationRootHash();
+      await colonyNetwork.deactivateRepairMode();
+
+      rootHash = await colonyNetwork.getReputationRootHash();
+      assert.equal(rootHash, "0x0000000000000000000000000000000000000000000000000000000000000000");
+    });
+
     it("should be able to migrate reputation update logs", async () => {
       const tokenArgs = getTokenArgs();
       const token = await Token.new(...tokenArgs);
@@ -2977,8 +3015,6 @@ contract("ColonyNetworkMining", accounts => {
       const tokenLockingAddress = await colonyNetwork.getTokenLocking();
       const newReputationMiningCycle = await ReputationMiningCycle.new(colonyNetwork.address, tokenLockingAddress, clny.address);
 
-      // Can't migrate all at once
-      await checkErrorRevert(colonyNetwork.migrateReputationUpdateLogs(newReputationMiningCycle.address, false, 0, numOfEntries.toNumber()));
       // So we migrate in 2 parts. 49 total
       const half = new BN(numOfEntries.toString()).divn(2).toNumber();
       await colonyNetwork.migrateReputationUpdateLogs(newReputationMiningCycle.address, false, 0, half);

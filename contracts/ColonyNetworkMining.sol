@@ -75,10 +75,16 @@ contract ColonyNetworkMining is ColonyNetworkStorage {
   }
 
   function revertReputationRootHash() public auth repair {
-    ReputationRootHash memory rootHashHistoryItem = reputationRootHashHistory[reputationRootHashHistory.length - 2];
-    reputationRootHash = rootHashHistoryItem.rootHash;
-    reputationRootHashNNodes = rootHashHistoryItem.nNodes;
+    if (reputationRootHashHistory.length >= 2) {
+      ReputationRootHash memory rootHashHistoryItem = reputationRootHashHistory[reputationRootHashHistory.length - 2];
+      reputationRootHash = rootHashHistoryItem.rootHash;
+      reputationRootHashNNodes = rootHashHistoryItem.nNodes;
+    } else {
+      reputationRootHash = 0x0;
+      reputationRootHashNNodes = 0;
+    }
     delete reputationRootHashHistory[reputationRootHashHistory.length - 1];
+    reputationRootHashHistory.length--;
   }
 
   function migrateReputationUpdateLogs(
