@@ -687,14 +687,14 @@ contract ReputationMiningCycle is PatriciaTreeProofs, DSMath {
     // If the amount in the log is positive, then no children are being updated.
     uint nParents;
     (nParents, , ) = IColonyNetwork(colonyNetworkAddress).getSkill(logEntry.skillId);
-    uint nChildUpdates;
-    if (logEntry.amount >= 0) { // solium-disable-line no-empty-blocks, whitespace
-      // Then we have no child updates to consider
-    } else {
+
+    uint nChildUpdates = 0;
+    if (logEntry.amount < 0) {
       nChildUpdates = logEntry.nUpdates/2 - 1 - nParents;
       // NB This is not necessarily the same as nChildren. However, this is the number of child updates
       // that this entry in the log was expecting at the time it was created.
     }
+    
     uint256 relativeUpdateNumber = (updateNumber - logEntry.nPreviousUpdates) % (logEntry.nUpdates/2);
     if (relativeUpdateNumber < nChildUpdates) {
       expectedSkillId = IColonyNetwork(colonyNetworkAddress).getChildSkillId(logEntry.skillId, relativeUpdateNumber);
@@ -783,7 +783,6 @@ contract ReputationMiningCycle is PatriciaTreeProofs, DSMath {
     bytes previousNewReputationValueBytes
   ) internal view
   {
-    // TODO: Possibility of reputation loss - child reputations do not lose the whole of logEntry.amount, but the same fraction logEntry amount is of the user's reputation in skill given by logEntry.skillId
     ReputationLogEntry storage logEntry = reputationUpdateLog[u[U_LOG_ENTRY_NUMBER]];
     uint256 agreeStateReputationValue;
     uint256 disagreeStateReputationValue;
@@ -823,6 +822,8 @@ contract ReputationMiningCycle is PatriciaTreeProofs, DSMath {
         require(disagreeStateReputationValue == (agreeStateReputationValue*999679150010888)/1000000000000000);
       }
     } else {
+      // TODO Child reputations do not lose the whole of logEntry.amount, but the same fraction logEntry amount is 
+      // of the user's reputation in skill given by logEntry.skillId
       if (logEntry.amount < 0 && uint(logEntry.amount * -1) > agreeStateReputationValue ) {
         require(disagreeStateReputationValue == 0);
       } else if (uint(logEntry.amount) + agreeStateReputationValue < agreeStateReputationValue) {
