@@ -901,7 +901,9 @@ contract ReputationMiningCycle is PatriciaTreeProofs, DSMath {
     // TODO: we're calling this twice during submitJRH. Should only need to call once.
     uint256 reputationRootHashNNodes = IColonyNetwork(colonyNetworkAddress).getReputationRootHashNNodes();
 
-    uint256 nUpdates = reputationUpdateLog[nLogEntries-1].nUpdates + reputationUpdateLog[nLogEntries-1].nPreviousUpdates + reputationRootHashNNodes;
+    uint256 nUpdates = reputationUpdateLog[nLogEntries-1].nUpdates + 
+    reputationUpdateLog[nLogEntries-1].nPreviousUpdates + reputationRootHashNNodes;
+    
     bytes memory nUpdatesBytes = new bytes(32);
     disputeRounds[round][index].jrhNnodes = nUpdates + 1;
     bytes32 submittedHash = disputeRounds[round][index].proposedNewRootHash;
