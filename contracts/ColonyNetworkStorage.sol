@@ -18,13 +18,13 @@
 pragma solidity ^0.4.23;
 pragma experimental "v0.5.0";
 
-import "../lib/dappsys/auth.sol";
 import "../lib/dappsys/math.sol";
+import "./Recovery.sol";
 import "./ERC20Extended.sol";
 import "./IColony.sol";
 
 
-contract ColonyNetworkStorage is DSAuth, DSMath {
+contract ColonyNetworkStorage is Recovery, DSMath {
   // Address of the Resolver contract used by EtherRouter for lookups and routing
   address resolver;
   // Number of colonies in the network
@@ -94,8 +94,6 @@ contract ColonyNetworkStorage is DSAuth, DSMath {
   mapping (address => bytes32) colonyLabels;
   // Mapping from user address to claimed user label
   mapping (address => bytes32) userLabels;
-
-  bool inRepairMode;
 
   modifier calledByColony() {
     require(_isColony[msg.sender], "colony-must-be-colony");

@@ -42,6 +42,11 @@ contract IColonyNetwork {
   /// @param quantity Quantity of `token` to auction
   event AuctionCreated(address auction, address token, uint256 quantity);
 
+  // Implemented in DSAuth.sol
+  /// @notice Set `DSAuthority` for the colony network
+  /// @param _authority Address of `DSAuthority` contract
+  function setAuthority(address _authority) public;
+
   /// @notice Get the Meta Colony address
   /// @return colonyAddress The Meta colony address, if no colony was found, returns 0x0
   function getMetaColony() public view returns (address colonyAddress);
@@ -146,17 +151,17 @@ contract IColonyNetwork {
   /// @return resolverAddress Address of the `Resolver` contract
   function getColonyVersionResolver(uint256 _version) public view returns (address resolverAddress);
 
-  /// @notice Activates repair mode
+  /// @notice Activates recovery mode
   /// @dev Can only be called by authorised address
-  function activateRepairMode() public;
+  function stop() public;
 
-  /// @notice Deactivates repair mode
+  /// @notice Deactivates recovery mode
   /// @dev Can only be called by authorised address
-  function deactivateRepairMode() public;
+  function start() public;
 
-  /// @notice Is mining process in repair mode
-  /// @return inRepairMode Returns true if mining process is in repair mode, false otherwise
-  function isInRepairMode() public view returns (bool inRepairMode);
+  /// @notice Get information about colony network recovery mode
+  /// @return isInRecoveryMode True if colony network is in recovery mode, false otherwise
+  function isStopped() public view returns (bool isInRecoveryMode);
 
   /// @notice Set a new Reputation root hash and starts a new mining cycle. Can only be called by the ReputationMiningCycle contract.
   /// @param newHash The reputation root hash
@@ -175,11 +180,11 @@ contract IColonyNetwork {
   function getReputationRootHashHistoryLength() public view returns (uint256 length);
 
   /// @notice Reverts reputation root hash to previous one
-  /// @dev Can only be called in repair mode by authorised address
+  /// @dev Can only be called in recovery mode by authorised address
   function revertReputationRootHash() public;
 
   /// @notice Move reputation update logs to a new mining cycle contract
-  /// @dev Can only be called in repair mode by authorised address
+  /// @dev Can only be called in recovery mode by authorised address
   /// @param _reputationMiningCycle Address of the new mining cycle
   /// @param _active Are we migrating logs from active or inactive mining cycle
   /// @param _startingIndex Index of the starting log entry
@@ -187,7 +192,7 @@ contract IColonyNetwork {
   function migrateReputationUpdateLogs(address _reputationMiningCycle, bool _active, uint256 _startingIndex, uint256 _batchSize) public;
 
   /// @notice Replace current mining cycle contracts with new ones
-  /// @dev Can only be called in repair mode by authorised address
+  /// @dev Can only be called in recovery mode by authorised address
   /// @param _activeReputationMiningCycle Address of new active reputation mining cycle
   /// @param _inactiveReputationMiningCycle Address of new inactive reputation mining cycle
   function replaceReputationMiningCycles(address _activeReputationMiningCycle, address _inactiveReputationMiningCycle) public;

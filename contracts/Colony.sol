@@ -215,7 +215,7 @@ contract Colony is ColonyStorage, PatriciaTreeProofs {
   }
 
   function enterRecoveryMode() public stoppable auth {
-    recoveryMode = true;
+    stop();
     recoveryApprovalCount = 0;
     recoveryEditedTimestamp = now;
   }
@@ -245,7 +245,6 @@ contract Colony is ColonyStorage, PatriciaTreeProofs {
     recoveryRolesCount = _recoveryRolesCount;
 
     // Reset recovery state
-    recoveryMode = true;
     recoveryApprovalCount = 0;
     recoveryEditedTimestamp = now;
   }
@@ -260,7 +259,7 @@ contract Colony is ColonyStorage, PatriciaTreeProofs {
     uint numRequired = recoveryRolesCount / 2 + 1;
     require(recoveryApprovalCount >= numRequired, "colony-recovery-exit-insufficient-approvals");
 
-    recoveryMode = false;
+    start();
     if (_newVersion > version()) {
       upgrade(_newVersion);
     }

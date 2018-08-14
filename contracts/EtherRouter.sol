@@ -19,10 +19,10 @@ pragma solidity ^0.4.23;
 pragma experimental "v0.5.0";
 
 import "./Resolver.sol";
-import "../lib/dappsys/auth.sol";
+import "./Recovery.sol";
 
 
-contract EtherRouter is DSAuth {
+contract EtherRouter is Recovery {
   Resolver public resolver;
 
   function() external payable {

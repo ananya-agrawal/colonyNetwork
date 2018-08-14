@@ -82,9 +82,6 @@ jobs:
           name: "Checking contract recovery modifiers"
           command: yarn run check:recoverymods
       - run:
-          name: "Checking contract repair modifiers"
-          command: yarn run check:repairmods
-      - run:
           name: "Running unit tests"
           command: yarn run test:contracts
       - run:

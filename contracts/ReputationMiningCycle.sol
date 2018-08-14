@@ -92,13 +92,13 @@ contract ReputationMiningCycle is PatriciaTreeProofs, DSMath {
     _;
   }
 
-  modifier repair() {
-    require(IColonyNetwork(colonyNetworkAddress).isInRepairMode(), "colony-network-mining-is-in-repair-mode");
+  modifier recovery() {
+    require(IColonyNetwork(colonyNetworkAddress).isStopped(), "in-recovery-mode");
     _;
   }
 
   modifier stoppable() {
-    require(!IColonyNetwork(colonyNetworkAddress).isInRepairMode(), "colony-network-mining-is-in-repair-mode");
+    require(!IColonyNetwork(colonyNetworkAddress).isStopped(), "not-in-recovery-mode");
     _;
   }
 
@@ -167,8 +167,8 @@ contract ReputationMiningCycle is PatriciaTreeProofs, DSMath {
   }
 
   /// @notice Constructor for this contract.
-  constructor(address _colonyNetwoekAddress, address _tokenLockingAddress, address _clnyTokenAddress) public {
-    colonyNetworkAddress = _colonyNetwoekAddress;
+  constructor(address _colonyNetworkAddress, address _tokenLockingAddress, address _clnyTokenAddress) public {
+    colonyNetworkAddress = _colonyNetworkAddress;
     tokenLockingAddress = _tokenLockingAddress;
     clnyTokenAddress = _clnyTokenAddress;
   }
@@ -181,7 +181,7 @@ contract ReputationMiningCycle is PatriciaTreeProofs, DSMath {
     return reputationUpdateLog.length;
   }
 
-  function transferEntryLogsTo(address _reputationMiningCycle, bool _active, uint256 _startingIndex, uint256 _batchSize) public onlyColonyNetwork repair {
+  function transferEntryLogsTo(address _reputationMiningCycle, bool _active, uint256 _startingIndex, uint256 _batchSize) public onlyColonyNetwork recovery {
     for (uint256 i = _startingIndex; i < add(_startingIndex, _batchSize); i++) {
       ReputationLogEntry memory updateLog = reputationUpdateLog[i];
       ReputationMiningCycle(_reputationMiningCycle).pushReputationUpdateLog(
@@ -204,7 +204,7 @@ contract ReputationMiningCycle is PatriciaTreeProofs, DSMath {
     uint256 _nUpdates,
     uint256 _nPreviousUpdates,
     bool _active
-  ) public repair
+  ) public recovery
   {
     address currentReputationMiningCycle = IColonyNetwork(colonyNetworkAddress).getReputationMiningCycle(_active);
     require(msg.sender == currentReputationMiningCycle, "reputation-mining-cycle-caller-not-reputation-mining-cycle");

@@ -31,28 +31,6 @@ contract ColonyNetworkMining is ColonyNetworkStorage {
     _;
   }
 
-  modifier stoppable() {
-    require(!inRepairMode, "colony-network-mining-is-in-repair-mode");
-    _;
-  }
-
-  modifier repair() {
-    require(inRepairMode, "colony-network-mining-not-in-repair-mode");
-    _;
-  }
-
-  function activateRepairMode() public auth {
-    inRepairMode = true;
-  }
-
-  function deactivateRepairMode() public auth {
-    inRepairMode = false;
-  }
-
-  function isInRepairMode() public view returns (bool) {
-    return inRepairMode;
-  }
-
   function setReputationRootHash(bytes32 newHash, uint256 newNNodes, address[] stakers) public
   stoppable
   onlyReputationMiningCycle
@@ -74,7 +52,7 @@ contract ColonyNetworkMining is ColonyNetworkStorage {
     return reputationRootHashHistory.length;
   }
 
-  function revertReputationRootHash() public auth repair {
+  function revertReputationRootHash() public auth recovery {
     if (reputationRootHashHistory.length >= 2) {
       ReputationRootHash memory rootHashHistoryItem = reputationRootHashHistory[reputationRootHashHistory.length - 2];
       reputationRootHash = rootHashHistoryItem.rootHash;
@@ -92,13 +70,13 @@ contract ColonyNetworkMining is ColonyNetworkStorage {
     bool _active,
     uint256 _startingIndex,
     uint256 _batchSize
-  ) public auth repair
+  ) public auth recovery
   {
     address oldReputationMiningAddress = _active ? activeReputationMiningCycle : inactiveReputationMiningCycle;
     ReputationMiningCycle(oldReputationMiningAddress).transferEntryLogsTo(_reputationMiningCycle, _active, _startingIndex, _batchSize);
   }
 
-  function replaceReputationMiningCycles(address _activeReputationMiningCycle, address _inactiveReputationMiningCycle) public auth repair {
+  function replaceReputationMiningCycles(address _activeReputationMiningCycle, address _inactiveReputationMiningCycle) public auth recovery {
     activeReputationMiningCycle = _activeReputationMiningCycle;
     inactiveReputationMiningCycle = _inactiveReputationMiningCycle;
     ReputationMiningCycle(activeReputationMiningCycle).resetWindow();

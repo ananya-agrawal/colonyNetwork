@@ -175,7 +175,7 @@ contract IReputationMiningCycle {
   function getReputationUpdateLogLength() public view returns (uint nUpdates);
 
   /// @notice Transfer reputation entry logs from current mining cycle to new one
-  /// @dev Can only be called in repair mode by authorised address
+  /// @dev Can only be called in recovery mode by authorised address
   /// @param _reputationMiningCycle New reputation mining cycle
   /// @param _active Are we transfering logs from active or inactive mining cycle
   /// @param _startingIndex Index of the starting log entry
@@ -183,7 +183,7 @@ contract IReputationMiningCycle {
   function transferEntryLogsTo(address _reputationMiningCycle, bool _active, uint256 _startingIndex, uint256 _batchSize) public;
 
   /// @notice Push a single log entry to `reputationUpdateLog` array
-  /// @dev Can only be called in repair mode by authorised address
+  /// @dev Can only be called in recovery mode by authorised address
   /// @param _user `user` property from `ReputationLogEntry` struct
   /// @param _amount `amount` property from `ReputationLogEntry` struct
   /// @param _skillId `skillId` property from `ReputationLogEntry` struct

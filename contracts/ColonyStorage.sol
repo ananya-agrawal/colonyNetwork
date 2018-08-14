@@ -18,14 +18,14 @@
 pragma solidity ^0.4.23;
 pragma experimental "v0.5.0";
 
-import "../lib/dappsys/auth.sol";
 import "../lib/dappsys/math.sol";
+import "./Recovery.sol";
 import "./ERC20Extended.sol";
 import "./IColonyNetwork.sol";
 import "./Authority.sol";
 
 
-contract ColonyStorage is DSAuth, DSMath {
+contract ColonyStorage is Recovery, DSMath {
   // When adding variables, do not make them public, otherwise all contracts that inherit from
   // this one will have the getters. Make custom getters in the contract that seems most appropriate,
   // and add it to IColony.sol
@@ -91,7 +91,6 @@ contract ColonyStorage is DSAuth, DSMath {
   uint8 constant WORKER = 2;
 
   // Variables for recovery mode
-  bool recoveryMode;
   uint64 recoveryRolesCount;
   uint64 recoveryApprovalCount;
   uint256 recoveryEditedTimestamp;
@@ -192,16 +191,6 @@ contract ColonyStorage is DSAuth, DSMath {
 
   modifier isAdmin(address _user) {
     require(Authority(authority).hasUserRole(_user, ADMIN_ROLE), "colony-not-admin");
-    _;
-  }
-
-  modifier recovery() {
-    require(recoveryMode, "colony-not-in-recovery-mode");
-    _;
-  }
-
-  modifier stoppable() {
-    require(!recoveryMode, "colony-in-recovery-mode");
     _;
   }
 
