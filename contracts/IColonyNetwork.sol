@@ -191,11 +191,11 @@ contract IColonyNetwork {
   /// @param _batchSize Number of logs to move
   function migrateReputationUpdateLogs(address _reputationMiningCycle, bool _active, uint256 _startingIndex, uint256 _batchSize) public;
 
-  /// @notice Replace current mining cycle contracts with new ones
+  /// @notice Replace current mining cycle contract with new one
   /// @dev Can only be called in recovery mode by authorised address
-  /// @param _activeReputationMiningCycle Address of new active reputation mining cycle
-  /// @param _inactiveReputationMiningCycle Address of new inactive reputation mining cycle
-  function replaceReputationMiningCycles(address _activeReputationMiningCycle, address _inactiveReputationMiningCycle) public;
+  /// @param _reputationMiningCycle Address of new reputation mining cycle
+  /// @param _active Is reputation mining cycle active
+  function replaceReputationMiningCycle(address _reputationMiningCycle, bool _active) public;
 
   /// @notice Creates initial inactive reputation mining cycle
   function initialiseReputationMining() public;

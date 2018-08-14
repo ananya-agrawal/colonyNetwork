@@ -74,6 +74,7 @@ contract ColonyNetworkStorage is Recovery, DSMath {
     uint256 nNodes;
   }
 
+  // History of all reputation hashes
   ReputationRootHash[] reputationRootHashHistory;
 
   // Mapping containing how much has been staked by each user

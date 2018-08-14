@@ -76,10 +76,13 @@ contract ColonyNetworkMining is ColonyNetworkStorage {
     ReputationMiningCycle(oldReputationMiningAddress).transferEntryLogsTo(_reputationMiningCycle, _active, _startingIndex, _batchSize);
   }
 
-  function replaceReputationMiningCycles(address _activeReputationMiningCycle, address _inactiveReputationMiningCycle) public auth recovery {
-    activeReputationMiningCycle = _activeReputationMiningCycle;
-    inactiveReputationMiningCycle = _inactiveReputationMiningCycle;
-    ReputationMiningCycle(activeReputationMiningCycle).resetWindow();
+  function replaceReputationMiningCycle(address _reputationMiningCycle, bool _active) public auth recovery {
+    if (_active) {
+      activeReputationMiningCycle = _reputationMiningCycle;
+      ReputationMiningCycle(activeReputationMiningCycle).resetWindow();
+    } else {
+      inactiveReputationMiningCycle = _reputationMiningCycle;
+    }
   }
 
   function initialiseReputationMining() public {

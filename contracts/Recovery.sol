@@ -3,6 +3,7 @@ pragma experimental "v0.5.0";
 
 import "../lib/dappsys/auth.sol";
 
+
 contract Recovery is DSAuth {
   modifier recovery() {
     require(stopped, "not-in-recovery-mode");
@@ -10,18 +11,18 @@ contract Recovery is DSAuth {
   }
 
   modifier stoppable {
-      require(!stopped, "in-recovery-mode");
-      _;
+    require(!stopped, "in-recovery-mode");
+    _;
   }
 
   bool stopped;
 
   function stop() public auth {
-      stopped = true;
+    stopped = true;
   }
 
   function start() public auth {
-      stopped = false;
+    stopped = false;
   }
 
   function isStopped() public view returns (bool) {

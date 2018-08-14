@@ -10,7 +10,7 @@ contract ColonyNetworkAuthority is DSRoles {
   constructor(address colonyNetwork) public {
     setRecoveryRoleCapability(colonyNetwork, "revertReputationRootHash()");
     setRecoveryRoleCapability(colonyNetwork, "migrateReputationUpdateLogs(address,bool,uint256,uint256)");
-    setRecoveryRoleCapability(colonyNetwork, "replaceReputationMiningCycles(address,address)");
+    setRecoveryRoleCapability(colonyNetwork, "replaceReputationMiningCycle(address,bool)");
   }
 
   function setRecoveryRoleCapability(address colony, bytes sig) private {

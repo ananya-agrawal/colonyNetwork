@@ -181,7 +181,13 @@ contract ReputationMiningCycle is PatriciaTreeProofs, DSMath {
     return reputationUpdateLog.length;
   }
 
-  function transferEntryLogsTo(address _reputationMiningCycle, bool _active, uint256 _startingIndex, uint256 _batchSize) public onlyColonyNetwork recovery {
+  function transferEntryLogsTo(
+    address _reputationMiningCycle,
+    bool _active,
+    uint256 _startingIndex,
+    uint256 _batchSize
+  ) public onlyColonyNetwork recovery
+  {
     for (uint256 i = _startingIndex; i < add(_startingIndex, _batchSize); i++) {
       ReputationLogEntry memory updateLog = reputationUpdateLog[i];
       ReputationMiningCycle(_reputationMiningCycle).pushReputationUpdateLog(

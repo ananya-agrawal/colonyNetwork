@@ -3070,7 +3070,8 @@ contract("ColonyNetworkMining", accounts => {
       const newActiveReputationMiningCycle = await ReputationMiningCycle.new(colonyNetwork.address, tokenLockingAddress, clny.address);
       const newInactiveReputationMiningCycle = await ReputationMiningCycle.new(colonyNetwork.address, tokenLockingAddress, clny.address);
 
-      await colonyNetwork.replaceReputationMiningCycles(newActiveReputationMiningCycle.address, newInactiveReputationMiningCycle.address);
+      await colonyNetwork.replaceReputationMiningCycle(newActiveReputationMiningCycle.address, true);
+      await colonyNetwork.replaceReputationMiningCycle(newInactiveReputationMiningCycle.address, false);
 
       const newActiveReputationMiningCycleAddress = await colonyNetwork.getReputationMiningCycle(true);
       const newInactiveReputationMiningCycleAddress = await colonyNetwork.getReputationMiningCycle(false);
@@ -3126,7 +3127,8 @@ contract("ColonyNetworkMining", accounts => {
       const newNumOfEntries = await newActiveReputationMiningCycle.getReputationUpdateLogLength();
       assert.equal(newNumOfEntries.toNumber(), numOfActiveEntries.toNumber());
 
-      await colonyNetwork.replaceReputationMiningCycles(newActiveReputationMiningCycle.address, newInactiveReputationMiningCycle.address);
+      await colonyNetwork.replaceReputationMiningCycle(newActiveReputationMiningCycle.address, true);
+      await colonyNetwork.replaceReputationMiningCycle(newInactiveReputationMiningCycle.address, false);
 
       await colonyNetwork.start();
 
@@ -3170,13 +3172,12 @@ contract("ColonyNetworkMining", accounts => {
 
       const tokenLockingAddress = await colonyNetwork.getTokenLocking();
       const newActiveReputationMiningCycle = await ReputationMiningCycle.new(colonyNetwork.address, tokenLockingAddress, clny.address);
-      const newInactiveReputationMiningCycle = await ReputationMiningCycle.new(colonyNetwork.address, tokenLockingAddress, clny.address);
 
       await colonyNetwork.migrateReputationUpdateLogs(newActiveReputationMiningCycle.address, true, 0, 1, {
         from: recoveryUser
       });
 
-      await colonyNetwork.replaceReputationMiningCycles(newActiveReputationMiningCycle.address, newInactiveReputationMiningCycle.address, {
+      await colonyNetwork.replaceReputationMiningCycle(newActiveReputationMiningCycle.address, true, {
         from: recoveryUser
       });
 
