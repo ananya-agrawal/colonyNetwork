@@ -16,11 +16,13 @@ walkSync("./contracts/").forEach(contractName => {
   if (
     [
       "contracts/Authority.sol",
+      "contracts/ColonyNetworkAuthority.sol",
       "contracts/ColonyNetworkStorage.sol",
       "contracts/ColonyStorage.sol",
       "contracts/EtherRouter.sol",
       "contracts/Migrations.sol",
       "contracts/Resolver.sol",
+      "contracts/Recovery.sol",
       "contracts/ReputationMiningCycle.sol", // Does not use EtherRouter
       "contracts/Token.sol", // Not directly used by any colony contracts
       "contracts/TokenLockingStorage.sol",

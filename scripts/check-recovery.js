@@ -18,6 +18,22 @@ function correctRecoveryModifier(functionDef) {
   return isPrivate || (isView || hasModifier);
 }
 
+function isNeutral(contractName, functionName) {
+  const exceptions = {
+    "contracts/ReputationMiningCycle.sol": ["constructor", "resetWindow"]
+  };
+
+  if (!exceptions[contractName]) {
+    return false;
+  }
+
+  if (exceptions[contractName].indexOf(functionName) < 0) {
+    return false;
+  }
+
+  return true;
+}
+
 walkSync("./contracts/").forEach(contractName => {
   // These contracts don't need to be checked, since they're not used in recovery mode
   // Basically only Colony.sol, ColonyFunding.sol, and ColonyTask.sol are
@@ -32,6 +48,7 @@ walkSync("./contracts/").forEach(contractName => {
       "contracts/PatriciaTree/PatriciaTree.sol",
       "contracts/PatriciaTree/PatriciaTreeProofs.sol",
       "contracts/Authority.sol",
+      "contracts/ColonyNetworkAuthority.sol",
       "contracts/ColonyNetwork.sol",
       "contracts/ColonyNetworkAuction.sol",
       "contracts/ColonyNetworkRegistrar.sol",
@@ -45,6 +62,7 @@ walkSync("./contracts/").forEach(contractName => {
       "contracts/ITokenLocking.sol",
       "contracts/Migrations.sol",
       "contracts/Resolver.sol",
+      "contracts/Recovery.sol",
       "contracts/SafeMath.sol",
       "contracts/Token.sol",
       "contracts/TokenLocking.sol",
@@ -67,8 +85,9 @@ walkSync("./contracts/").forEach(contractName => {
 
   // Check for that all public, non-{view,pure} functions have either stoppable or recovery modifiers.
   contract.subNodes.filter(child => child.type === "FunctionDefinition").forEach(functionDef => {
-    if (!correctRecoveryModifier(functionDef)) {
-      console.log("The contract", contractName, "contains a missing stoppable/recovery modifier in function", functionDef.name, ".");
+    const functionName = functionDef.name !== null ? functionDef.name : "constructor";
+    if (!correctRecoveryModifier(functionDef) && !isNeutral(contractName, functionName)) {
+      console.log("The contract", contractName, "contains a missing stoppable/recovery modifier in function", functionName, ".");
       process.exit(1);
     }
   });
