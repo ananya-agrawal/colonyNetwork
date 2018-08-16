@@ -2055,6 +2055,18 @@ contract("ColonyNetworkMining", accounts => {
   });
 
   describe("Intended ('happy path') behaviours", () => {
+    before(async () => {
+      // We're not resetting the global skills tree as the Network is not reset
+      // Initialise global skills tree: 1 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
+      await metaColony.addGlobalSkill(1);
+      await metaColony.addGlobalSkill(4);
+      await metaColony.addGlobalSkill(5);
+      await metaColony.addGlobalSkill(6);
+      await metaColony.addGlobalSkill(7);
+      await metaColony.addGlobalSkill(8);
+      await metaColony.addGlobalSkill(9);
+    });
+
     it("should cope with many hashes being submitted and eliminated before a winner is assigned", async function manySubmissionTest() {
       this.timeout(100000000);
       const nClients = Math.min(accounts.length, 7);
@@ -2443,7 +2455,7 @@ contract("ColonyNetworkMining", accounts => {
       assert.equal(activeRepLogLength.toNumber(), 1);
     });
 
-    it("The reputation mining client should insert reputation updates from the log", async () => {
+    it("should insert reputation updates from the log", async () => {
       await giveUserCLNYTokensAndStake(colonyNetwork, MAIN_ACCOUNT, "1000000000000000000");
 
       let addr = await colonyNetwork.getReputationMiningCycle(true);
@@ -2455,11 +2467,6 @@ contract("ColonyNetworkMining", accounts => {
       await giveUserCLNYTokens(colonyNetwork, MAIN_ACCOUNT, "1000000000000000000");
       await giveUserCLNYTokens(colonyNetwork, OTHER_ACCOUNT, "1000000000000000000");
       await giveUserCLNYTokens(colonyNetwork, accounts[2], "1000000000000000000");
-
-      const rootGlobalSkillId = await colonyNetwork.getRootGlobalSkillId();
-      await metaColony.addGlobalSkill(rootGlobalSkillId.toNumber()); // SkillId 4 added
-      await metaColony.addGlobalSkill(4); // SkillId 5 added
-      await metaColony.addGlobalSkill(5); // SkillId 6 added
 
       const taskId = await setupRatedTask({
         colonyNetwork,
@@ -2480,7 +2487,8 @@ contract("ColonyNetworkMining", accounts => {
       await repCycle.submitRootHash("0x12345678", 10, 10);
       await repCycle.confirmNewHash(0);
 
-      // The update log should contain the person being rewarded for the previous
+      // The update log should contain the person being rewarded for the previous update cycle,
+      // and 4x reputation updates for three task completions (manager, worker (domain and skill), evaluator);
       // That's seventeen in total.
       addr = await colonyNetwork.getReputationMiningCycle(true);
       repCycle = await ReputationMiningCycle.at(addr);
@@ -2491,7 +2499,7 @@ contract("ColonyNetworkMining", accounts => {
       await client.initialise(colonyNetwork.address);
       await client.addLogContentsToReputationTree();
 
-      // Check the client's tree has 21 entries. In order these were added (and therefore in order of reputation UID),
+      // Check the client's tree has 25 entries. In order these were added (and therefore in order of reputation UID),
       // these are:
       // 1. Colony-wide total reputation for metaColony's root skill
       // 2. Colony-wide total reputation for mining skill
@@ -2518,13 +2526,21 @@ contract("ColonyNetworkMining", accounts => {
       // 10. Worker reputation for metaColony's root skill
       // 11. Colony-wide total reputation for global skillId 5
       // 12. Colony-wide total reputation for global skillId 6
+      // 13. Colony-wide total reputation for global skillId 7
+      // 14. Colony-wide total reputation for global skillId 8
+      // 15. Colony-wide total reputation for global skillId 9
+      // 16. Colony-wide total reputation for global skillId 10
       // x. Colony-wide total reputation for global skillId 1 (same as 7)
-      // 13. Colony-wide total reputation for global skillId 4
-      // 14. Worker reputation for global skillId 5
-      // 15. Worker reputation for global skillId 6
-      // 16. Worker reputation for global skillId 1
-      // 17. Worker reputation for global skillId 4
-      assert.equal(Object.keys(client.reputations).length, 17);
+      // 17. Colony-wide total reputation for global skillId 4
+      // 18. Worker reputation for global skillId 5
+      // 19. Worker reputation for global skillId 6
+      // 20. Worker total reputation for global skillId 7
+      // 21. Worker total reputation for global skillId 8
+      // 22. Worker total reputation for global skillId 9
+      // 23. Worker total reputation for global skillId 10
+      // 24. Worker reputation for global skillId 1
+      // 25. Worker reputation for global skillId 4
+      assert.equal(Object.keys(client.reputations).length, 25);
 
       const GLOBAL_SKILL = 1;
       const META_ROOT_SKILL = 2;
@@ -2543,28 +2559,117 @@ contract("ColonyNetworkMining", accounts => {
         { id: 10, skill: META_ROOT_SKILL, account: accounts[3], value: "0" },
         { id: 11, skill: 5, account: undefined, value: "0" },
         { id: 12, skill: 6, account: undefined, value: "0" },
-        { id: 13, skill: 4, account: undefined, value: "0" },
-        { id: 14, skill: 5, account: accounts[3], value: "0" },
-        { id: 15, skill: 6, account: accounts[3], value: "0" },
-        { id: 16, skill: 1, account: accounts[3], value: "0" },
-        { id: 17, skill: 4, account: accounts[3], value: "0" }
+        { id: 13, skill: 7, account: undefined, value: "0" },
+        { id: 14, skill: 8, account: undefined, value: "0" },
+        { id: 15, skill: 9, account: undefined, value: "0" },
+        { id: 16, skill: 10, account: undefined, value: "0" },
+        { id: 17, skill: 4, account: undefined, value: "0" },
+        { id: 18, skill: 5, account: accounts[3], value: "0" },
+        { id: 19, skill: 6, account: accounts[3], value: "0" },
+        { id: 20, skill: 7, account: accounts[3], value: "0" },
+        { id: 21, skill: 8, account: accounts[3], value: "0" },
+        { id: 22, skill: 9, account: accounts[3], value: "0" },
+        { id: 23, skill: 10, account: accounts[3], value: "0" },
+        { id: 24, skill: 1, account: accounts[3], value: "0" },
+        { id: 25, skill: 4, account: accounts[3], value: "0" }
       ];
 
       reputationProps.forEach(reputationProp => {
         const key = makeReputationKey(metaColony.address, reputationProp.skill, reputationProp.account);
         const value = makeReputationValue(reputationProp.value, reputationProp.id);
-        assert.equal(client.reputations[key], value, `${reputationProp.id} failed`);
+        const decimalValue = new BN(value.slice(2, 66), 16);
+        assert.equal(client.reputations[key], value, `${reputationProp.id} failed. Actual value is ${decimalValue}`);
       });
     });
 
-    it("The reputation mining client should correctly update parent reputations", async () => {
-      // TODO: We are working with the same global skills tree as the previous test
-      await metaColony.addGlobalSkill(6);
-      await metaColony.addGlobalSkill(7);
-      await metaColony.addGlobalSkill(8);
-      await metaColony.addGlobalSkill(9);
-      // 1 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
+    it("should correctly update child reputations", async () => {
+      await giveUserCLNYTokensAndStake(colonyNetwork, MAIN_ACCOUNT, "1000000000000000000");
 
+      // Earn some reputation for manager and worker in first task, then do badly in second task and lose some of it
+      const taskId1 = await setupRatedTask({
+        colonyNetwork,
+        colony: metaColony,
+        skill: 10,
+        managerPayout: 1000000000000,
+        evaluatorPayout: 1000000000,
+        workerPayout: 5000000000000,
+        managerRating: 3,
+        workerRating: 3
+      });
+      await metaColony.finalizeTask(taskId1);
+
+      const taskId2 = await setupRatedTask({
+        colonyNetwork,
+        colony: metaColony,
+        skill: 8,
+        managerPayout: 1000000000000,
+        evaluatorPayout: 1000000000,
+        workerPayout: 4200000000000,
+        managerRating: 2,
+        workerRating: 1
+      });
+      await metaColony.finalizeTask(taskId2);
+
+      let addr = await colonyNetwork.getReputationMiningCycle(true);
+      let repCycle = await ReputationMiningCycle.at(addr);
+      await forwardTime(3600, this);
+      await repCycle.submitRootHash("0x00", 0, 10);
+      await repCycle.confirmNewHash(0);
+
+      addr = await colonyNetwork.getReputationMiningCycle(true);
+      repCycle = await ReputationMiningCycle.at(addr);
+
+      const nInactiveLogEntries = await repCycle.getReputationUpdateLogLength();
+      // The update log should contain the person being rewarded for the previous update cycle,
+      // and 3x4 reputation updates for the task completions (manager, worker (domain and skill), evaluator);
+      // That's 13 in total.
+      assert.equal(nInactiveLogEntries.toNumber(), 13);
+
+      const client = new ReputationMiner({ loader: contractLoader, minerAddress: MAIN_ACCOUNT, realProviderPort: REAL_PROVIDER_PORT, useJsTree });
+      await client.initialise(colonyNetwork.address);
+      await client.addLogContentsToReputationTree();
+      assert.equal(Object.keys(client.reputations).length, 23);
+
+      const reputationProps = [
+        // Reputation earned by MAIN_ACCOUNT for mining the correct hash
+        { id: 1, skill: 2, account: undefined, value: 3000005802000000000 },
+        // TODO: Bug in parent reputation update for reputation loss, value below is wrongly deducted by -560000000000000000 => 440000000000000000
+        // { id: 2, skill: 3, account: undefined, value: 1000000000000000000 },
+        { id: 3, skill: 2, account: accounts[0], value: 3000002500000000000 },
+        { id: 4, skill: 3, account: accounts[0], value: 1000000000000000000 },
+        { id: 5, skill: 2, account: accounts[1], value: 2000000000 },
+        { id: 6, skill: 2, account: accounts[2], value: 3300000000000 },
+        // Reputation lost from completing a task in root domain and global skill 8
+        { id: 7, skill: 1, account: undefined, value: 3300000000000 },
+        { id: 8, skill: 1, account: accounts[2], value: 3300000000000 },
+
+        { id: 9, skill: 9, account: undefined, value: 3300000000000 },
+        { id: 10, skill: 8, account: undefined, value: 3300000000000 },
+        { id: 11, skill: 7, account: undefined, value: 3300000000000 },
+        { id: 12, skill: 6, account: undefined, value: 3300000000000 },
+        { id: 13, skill: 5, account: undefined, value: 3300000000000 },
+        { id: 14, skill: 4, account: undefined, value: 3300000000000 },
+        { id: 15, skill: 10, account: undefined, value: 3300000000000 },
+
+        { id: 16, skill: 9, account: accounts[2], value: 3300000000000 },
+        { id: 17, skill: 8, account: accounts[2], value: 3300000000000 }, // 44% decrease
+        { id: 18, skill: 7, account: accounts[2], value: 3300000000000 },
+        { id: 19, skill: 6, account: accounts[2], value: 3300000000000 },
+        { id: 20, skill: 5, account: accounts[2], value: 3300000000000 },
+        { id: 21, skill: 4, account: accounts[2], value: 3300000000000 },
+        { id: 22, skill: 10, account: accounts[2], value: 3300000000000 },
+        { id: 23, skill: 3, account: accounts[2], value: 0 }
+      ];
+
+      reputationProps.forEach(reputationProp => {
+        const key = makeReputationKey(metaColony.address, reputationProp.skill, reputationProp.account);
+        const value = makeReputationValue(reputationProp.value, reputationProp.id);
+        const decimalValue = new BN(client.reputations[key].slice(2, 66), 16);
+        assert.equal(client.reputations[key], value, `${reputationProp.id} failed. Actual value is ${decimalValue}`);
+      });
+    });
+
+    it("should correctly update parent reputations", async () => {
       // Make sure there's funding for the task
       await giveUserCLNYTokensAndStake(colonyNetwork, MAIN_ACCOUNT, "1000000000000000000");
 
@@ -2635,21 +2740,12 @@ contract("ColonyNetworkMining", accounts => {
       reputationProps.forEach(reputationProp => {
         const key = makeReputationKey(metaColony.address, reputationProp.skill, reputationProp.account);
         const value = makeReputationValue(reputationProp.value, reputationProp.id);
-        assert.equal(goodClient.reputations[key], value, `${reputationProp.id} failed`);
+        const decimalValue = new BN(goodClient.reputations[key].slice(2, 66), 16);
+        assert.equal(goodClient.reputations[key], value, `${reputationProp.id} failed. Actual value is ${decimalValue}`);
       });
     });
 
     it("should cope if the wrong reputation transition is a distant parent", async () => {
-      await metaColony.addGlobalSkill(1);
-      await metaColony.addGlobalSkill(4);
-      await metaColony.addGlobalSkill(5);
-      await metaColony.addGlobalSkill(6);
-      await metaColony.addGlobalSkill(7);
-      await metaColony.addGlobalSkill(8);
-      await metaColony.addGlobalSkill(9);
-
-      // 1 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
-
       // Do some tasks
       await giveUserCLNYTokensAndStake(colonyNetwork, MAIN_ACCOUNT, "1000000000000000000");
       await giveUserCLNYTokensAndStake(colonyNetwork, OTHER_ACCOUNT, "1000000000000000000");
@@ -2702,7 +2798,7 @@ contract("ColonyNetworkMining", accounts => {
       await repCycle.confirmNewHash(1);
     });
 
-    it("Should allow a user to prove their reputation", async () => {
+    it("should allow a user to prove their reputation", async () => {
       await giveUserCLNYTokensAndStake(colonyNetwork, MAIN_ACCOUNT, "1000000000000000000");
 
       let addr = await colonyNetwork.getReputationMiningCycle(true);
@@ -2738,7 +2834,7 @@ contract("ColonyNetworkMining", accounts => {
       assert.equal(validProof, true);
     });
 
-    it("Should correctly decay a reputation to zero, and then 'decay' to zero in subsequent cycles", async () => {
+    it("should correctly decay a reputation to zero, and then 'decay' to zero in subsequent cycles", async () => {
       await giveUserCLNYTokensAndStake(colonyNetwork, MAIN_ACCOUNT, "1000000000000000000");
       await giveUserCLNYTokensAndStake(colonyNetwork, OTHER_ACCOUNT, "1000000000000000000");
       badClient = new MaliciousReputationMinerExtraRep(

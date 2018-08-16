@@ -260,11 +260,15 @@ class ReputationMiner {
 
             if (!existingValueForActualUserSkillRep.isZero()) {
               const key = await this.getKeyForUpdateNumber(updateNumber);
-              const reputation = new BN(this.reputations[key].slice(2, 66), 16);
 
-              // todo bn.js doesn't have decimals so is fraction precision enough here?
-              const targetScore = reputation.mul(bnScore).div(existingValueForActualUserSkillRep);
-              score = targetScore;
+              if (this.reputations[key] !== undefined) {
+                const reputation = new BN(this.reputations[key].slice(2, 66), 16);
+                // todo bn.js doesn't have decimals so is fraction precision enough here?
+                const targetScore = reputation.mul(bnScore).div(existingValueForActualUserSkillRep);
+                score = targetScore;
+              } else {
+                score = new BN(0);
+              }
             }
           } else {
             score = new BN(0);
