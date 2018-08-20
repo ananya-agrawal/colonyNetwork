@@ -140,11 +140,11 @@ contract ReputationMiningCycle is PatriciaTreeProofs, DSMath {
   modifier withinTarget(bytes32 newHash, uint256 entryIndex) {
     require(reputationMiningWindowOpenTimestamp > 0, "colony-reputation-mining-cycle-not-open");
     // Check the ticket is a winning one.
-    require((now - reputationMiningWindowOpenTimestamp) <= 3600);
+    require((now - reputationMiningWindowOpenTimestamp) <= 3600, "colony-reputation-mining-cycle-submission-window-closed");
     // x = floor(uint((2**256 - 1) / 3600)
     uint256 x = 32164469232587832062103051391302196625908329073789045566515995557753647122;
     uint256 target = (now - reputationMiningWindowOpenTimestamp ) * x;
-    require(uint256(getEntryHash(msg.sender, entryIndex, newHash)) < target, "colony-reputation-mining-cycle-closed");
+    require(uint256(getEntryHash(msg.sender, entryIndex, newHash)) < target, "colony-reputation-mining-cycle-submission-not-within-target");
     _;
   }
 
