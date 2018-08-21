@@ -683,7 +683,9 @@ contract ReputationMiningCycle is PatriciaTreeProofs, DSMath {
     // If the state transition we're checking is less than the number of nodes in the currently accepted state, it's a decay transition
     // Otherwise, look up the corresponding entry in the reputation log.
     uint256 updateNumber = disputeRounds[u[U_ROUND]][u[U_IDX]].lowerBound - 1;
-    if (updateNumber < IColonyNetwork(colonyNetworkAddress).getReputationRootHashNNodes()) {
+    uint256 nNodes;
+    (,nNodes) = IColonyNetwork(colonyNetworkAddress).getReputationRootHash();
+    if (updateNumber < nNodes) {
       checkKeyDecay(updateNumber, _reputationValue);
       u[U_DECAY_TRANSITION] = 1;
     } else {
@@ -707,7 +709,7 @@ contract ReputationMiningCycle is PatriciaTreeProofs, DSMath {
   }
 
   function checkKeyLogEntry(uint256 round, uint256 idx, uint256 logEntryNumber, bytes memory _reputationKey) internal {
-    uint256 updateNumber = disputeRounds[round][idx].lowerBound - 1 - IColonyNetwork(colonyNetworkAddress).getReputationRootHashNNodes();
+    uint256 updateNumber = getUpdateNumber(round, idx);
 
     ReputationLogEntry storage logEntry = reputationUpdateLog[logEntryNumber];
 
@@ -736,6 +738,13 @@ contract ReputationMiningCycle is PatriciaTreeProofs, DSMath {
     require(expectedAddress == userAddress, "colony-reputation-mining-user-address-mismatch");
     require(logEntry.colony == colonyAddress, "colony-reputation-mining-colony-address-mismatch");
     require(expectedSkillId == skillId, "colony-reputation-mining-skill-id-mismatch");
+  }
+
+  function getUpdateNumber(uint256 round, uint256 idx) internal view returns (uint256) {
+    uint256 nNodes;
+    (,nNodes) = IColonyNetwork(colonyNetworkAddress).getReputationRootHash();
+    uint256 updateNumber = disputeRounds[round][idx].lowerBound - 1 - nNodes;
+    return updateNumber;
   }
 
   function getExpectedSkillIdAndAddress(ReputationLogEntry storage logEntry, uint256 updateNumber) internal view
@@ -945,8 +954,9 @@ contract ReputationMiningCycle is PatriciaTreeProofs, DSMath {
 
   function checkJRHProof1(bytes32 jrh, uint256 branchMask1, bytes32[] siblings1) internal view {
     // Proof 1 needs to prove that they started with the current reputation root hash
-    bytes32 reputationRootHash = IColonyNetwork(colonyNetworkAddress).getReputationRootHash();
-    uint256 reputationRootHashNNodes = IColonyNetwork(colonyNetworkAddress).getReputationRootHashNNodes();
+    bytes32 reputationRootHash;
+    uint256 reputationRootHashNNodes;
+    (reputationRootHash, reputationRootHashNNodes) = IColonyNetwork(colonyNetworkAddress).getReputationRootHash();
     bytes memory jhLeafValue = new bytes(64);
     bytes memory zero = new bytes(32);
     assembly {
@@ -966,7 +976,9 @@ contract ReputationMiningCycle is PatriciaTreeProofs, DSMath {
     // The total number of updates we expect is the nPreviousUpdates in the last entry of the log plus the number
     // of updates that log entry implies by itself, plus the number of decays (the number of nodes in current state)
     // TODO: we're calling this twice during submitJRH. Should only need to call once.
-    uint256 reputationRootHashNNodes = IColonyNetwork(colonyNetworkAddress).getReputationRootHashNNodes();
+
+    uint256 reputationRootHashNNodes;
+    (,reputationRootHashNNodes) = IColonyNetwork(colonyNetworkAddress).getReputationRootHash();
 
     uint256 nUpdates = reputationUpdateLog[nLogEntries-1].nUpdates +
     reputationUpdateLog[nLogEntries-1].nPreviousUpdates + reputationRootHashNNodes;

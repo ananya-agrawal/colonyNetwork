@@ -82,12 +82,9 @@ contract ColonyNetwork is ColonyNetworkStorage {
     return (skill.nParents, skill.nChildren, skill.globalSkill);
   }
 
-  function getReputationRootHash() public view returns (bytes32) {
-    return reputationRootHash;
-  }
-
-  function getReputationRootHashNNodes() public view returns (uint256) {
-    return reputationRootHashNNodes;
+  function getReputationRootHash() public view returns (bytes32, uint256) {
+    ReputationRootHash memory rootHashHistoryItem = reputationRootHashHistory[reputationRootHashHistory.length - 1];
+    return (rootHashHistoryItem.rootHash, rootHashHistoryItem.nNodes);
   }
 
   function setTokenLocking(address _tokenLocking) public

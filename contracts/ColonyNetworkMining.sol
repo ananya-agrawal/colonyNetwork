@@ -36,8 +36,6 @@ contract ColonyNetworkMining is ColonyNetworkStorage {
   onlyReputationMiningCycle
   {
     reputationRootHashHistory.push(ReputationRootHash(newHash, newNNodes));
-    reputationRootHash = newHash;
-    reputationRootHashNNodes = newNNodes;
     // Reward stakers
     activeReputationMiningCycle = 0x0;
     startNextCycle();
@@ -53,16 +51,10 @@ contract ColonyNetworkMining is ColonyNetworkStorage {
   }
 
   function revertReputationRootHash() public auth recovery {
-    if (reputationRootHashHistory.length >= 2) {
-      ReputationRootHash memory rootHashHistoryItem = reputationRootHashHistory[reputationRootHashHistory.length - 2];
-      reputationRootHash = rootHashHistoryItem.rootHash;
-      reputationRootHashNNodes = rootHashHistoryItem.nNodes;
-    } else {
-      reputationRootHash = 0x0;
-      reputationRootHashNNodes = 0;
+    if (reputationRootHashHistory.length > 0) {
+      delete reputationRootHashHistory[reputationRootHashHistory.length - 1];
+      reputationRootHashHistory.length--;
     }
-    delete reputationRootHashHistory[reputationRootHashHistory.length - 1];
-    reputationRootHashHistory.length--;
   }
 
   function migrateReputationUpdateLogs(
@@ -85,10 +77,11 @@ contract ColonyNetworkMining is ColonyNetworkStorage {
     }
   }
 
-  function initialiseReputationMining() public {
+  function initialiseReputationMining() public stoppable {
     require(inactiveReputationMiningCycle == 0x0, "colony-reputation-mining-already-initialised");
     address clnyToken = IColony(metaColony).getToken();
     require(clnyToken != 0x0, "colony-reputation-mining-clny-token-invalid-address");
+    reputationRootHashHistory.push(ReputationRootHash(0x0, 0));
     inactiveReputationMiningCycle = new ReputationMiningCycle(address(this), tokenLocking, clnyToken);
   }
 

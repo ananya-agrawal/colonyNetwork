@@ -198,8 +198,11 @@ contract ColonyFunding is ColonyStorage {
 
     activeRewardPayouts[_token] = true;
 
+    bytes32 rootHash;
+    (rootHash,) = IColonyNetwork(colonyNetworkAddress).getReputationRootHash();
+
     rewardPayoutCycles[totalLockCount] = RewardPayoutCycle(
-      IColonyNetwork(colonyNetworkAddress).getReputationRootHash(),
+      rootHash,
       totalTokens,
       pots[0].balance[_token],
       _token,

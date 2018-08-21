@@ -17,7 +17,7 @@ const Token = artifacts.require("Token");
 const ITokenLocking = artifacts.require("ITokenLocking");
 const DSRoles = artifacts.require("DSRoles");
 
-contract("Colony Funding", accounts => {
+contract.only("Colony Funding", accounts => {
   const MANAGER = accounts[0];
   const EVALUATOR = MANAGER;
   const WORKER = accounts[2];
@@ -1074,10 +1074,10 @@ contract("Colony Funding", accounts => {
 
       const balance = await colony.getPotBalance(0, otherToken.address);
       const blockTimestamp = await currentBlockTime();
-      const reputationRootHash = await colonyNetwork.getReputationRootHash();
+      const { rootHash } = await colonyNetwork.getReputationRootHash();
 
       const info = await colony.getRewardPayoutInfo(payoutId);
-      assert.equal(info[0], reputationRootHash);
+      assert.equal(info[0], rootHash);
       assert.equal(info[1].toString(), userTokens.toString());
       assert.equal(info[2].toString(), balance.toString());
       assert.equal(info[3].toString(), otherToken.address);

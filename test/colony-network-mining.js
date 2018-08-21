@@ -305,10 +305,9 @@ contract("ColonyNetworkMining", accounts => {
       assert(newAddr !== 0x0);
       assert(addr !== 0x0);
       assert(newAddr !== addr);
-      const rootHash = await colonyNetwork.getReputationRootHash();
+      const { rootHash, nNodes } = await colonyNetwork.getReputationRootHash();
       assert.equal(rootHash, "0x1234567800000000000000000000000000000000000000000000000000000000");
-      const rootHashNNodes = await colonyNetwork.getReputationRootHashNNodes();
-      assert(rootHashNNodes.eq(new BN(10)));
+      assert(nNodes.eq(new BN(10)));
     });
 
     it("should not allow someone who is not ColonyNetwork to appendReputationUpdateLog", async () => {
@@ -357,11 +356,10 @@ contract("ColonyNetworkMining", accounts => {
       assert(newAddr !== 0x0);
       assert(addr !== 0x0);
       assert(newAddr !== addr);
-      const rootHash = await colonyNetwork.getReputationRootHash();
+      const { rootHash, nNodes } = await colonyNetwork.getReputationRootHash();
       const clientRootHash = await goodClient.getRootHash();
       assert.equal(rootHash, clientRootHash);
-      const rootHashNNodes = await colonyNetwork.getReputationRootHashNNodes();
-      assert.equal(rootHashNNodes.toString(), goodClient.nReputations.toString());
+      assert.equal(nNodes.toString(), goodClient.nReputations.toString());
     });
 
     it("should allow a new reputation hash to be moved to the next stage of competition even if it does not have a partner", async () => {
@@ -389,11 +387,10 @@ contract("ColonyNetworkMining", accounts => {
       assert(newAddr !== 0x0);
       assert(addr !== 0x0);
       assert(newAddr !== addr);
-      const rootHash = await colonyNetwork.getReputationRootHash();
+      const { rootHash, nNodes } = await colonyNetwork.getReputationRootHash();
       const clientRootHash = await goodClient.getRootHash();
       assert.equal(rootHash, clientRootHash);
-      const rootHashNNodes = await colonyNetwork.getReputationRootHashNNodes();
-      assert.equal(rootHashNNodes.toString(), goodClient.nReputations.toString());
+      assert.equal(nNodes.toString(), goodClient.nReputations.toString());
     });
 
     it("should not allow a new reputation hash to be set if more than one was submitted and they have not been elimintated", async () => {
@@ -1263,8 +1260,8 @@ contract("ColonyNetworkMining", accounts => {
 
       await repCycle.invalidateHash(0, 1);
       await repCycle.confirmNewHash(1);
-      const confirmedHash = await colonyNetwork.getReputationRootHash();
-      assert.equal(confirmedHash, righthash);
+      const { rootHash } = await colonyNetwork.getReputationRootHash();
+      assert.equal(rootHash, righthash);
     });
 
     it("if a new reputation's UID is not proved right because a too-old previous ID is proved, it should be handled correctly", async () => {
@@ -2905,13 +2902,13 @@ contract("ColonyNetworkMining", accounts => {
       await repCycle.submitRootHash("0x12345678", 10, 10);
       await repCycle.confirmNewHash(0);
 
-      let rootHash = await colonyNetwork.getReputationRootHash();
+      let { rootHash } = await colonyNetwork.getReputationRootHash();
       assert.equal(rootHash, "0x1234567800000000000000000000000000000000000000000000000000000000");
 
       await colonyNetwork.stop();
 
       await colonyNetwork.revertReputationRootHash();
-      rootHash = await colonyNetwork.getReputationRootHash();
+      ({ rootHash } = await colonyNetwork.getReputationRootHash());
       assert.equal(rootHash, "0x0000000000000000000000000000000000000000000000000000000000000000");
 
       await colonyNetwork.start();
@@ -2930,7 +2927,7 @@ contract("ColonyNetworkMining", accounts => {
       numberOfHashes = await colonyNetwork.getReputationRootHashHistoryLength();
       assert.equal(numberOfHashes.toNumber(), 0);
 
-      let rootHash = await colonyNetwork.getReputationRootHash();
+      let { rootHash } = await colonyNetwork.getReputationRootHash();
       assert.equal(rootHash, "0x0000000000000000000000000000000000000000000000000000000000000000");
 
       await colonyNetwork.start();
@@ -2944,14 +2941,14 @@ contract("ColonyNetworkMining", accounts => {
       await repCycle.submitRootHash("0x12345678", 10, 10);
       await repCycle.confirmNewHash(0);
 
-      rootHash = await colonyNetwork.getReputationRootHash();
+      ({ rootHash } = await colonyNetwork.getReputationRootHash());
       assert.equal(rootHash, "0x1234567800000000000000000000000000000000000000000000000000000000");
 
       await colonyNetwork.stop();
       await colonyNetwork.revertReputationRootHash();
       await colonyNetwork.start();
 
-      rootHash = await colonyNetwork.getReputationRootHash();
+      ({ rootHash } = await colonyNetwork.getReputationRootHash());
       assert.equal(rootHash, "0x0000000000000000000000000000000000000000000000000000000000000000");
     });
 
@@ -3139,7 +3136,7 @@ contract("ColonyNetworkMining", accounts => {
       await newActiveReputationMiningCycle.confirmNewHash(0);
 
       const localRootHash = await goodClient.getRootHash();
-      const rootHash = await colonyNetwork.getReputationRootHash();
+      const { rootHash } = await colonyNetwork.getReputationRootHash();
       assert.equal(localRootHash, rootHash);
     });
 
@@ -3159,15 +3156,13 @@ contract("ColonyNetworkMining", accounts => {
       await repCycle.submitRootHash("0x12345678", 10, 10);
       await repCycle.confirmNewHash(0);
 
-      let rootHash = await colonyNetwork.getReputationRootHash();
+      let { rootHash } = await colonyNetwork.getReputationRootHash();
       assert.equal(rootHash, "0x1234567800000000000000000000000000000000000000000000000000000000");
 
       await colonyNetwork.stop();
 
       await colonyNetwork.revertReputationRootHash();
-      rootHash = await colonyNetwork.getReputationRootHash({
-        from: recoveryUser
-      });
+      ({ rootHash } = await colonyNetwork.getReputationRootHash());
       assert.equal(rootHash, "0x0000000000000000000000000000000000000000000000000000000000000000");
 
       const tokenLockingAddress = await colonyNetwork.getTokenLocking();

@@ -206,12 +206,8 @@ contract IColonyNetwork {
 
   /// @notice Get the root hash of the current reputation state tree
   /// @return rootHash bytes32 The current Reputation Root Hash
-  function getReputationRootHash() public view returns (bytes32 rootHash);
-
-  /// @notice Get the number of nodes in the current reputation state tree.
-  /// @dev I cannot see a reason why a user's client would need to call this - only stored to help with some edge cases in reputation mining dispute resolution
   /// @return nNodes uint256 The number of nodes in the state tree
-  function getReputationRootHashNNodes() public view returns (uint256 nNodes);
+  function getReputationRootHash() public view returns (bytes32 rootHash, uint256 nNodes);
 
   /// @notice Create and start a new `DutchAuction` for the entire amount of `_token` owned by the Colony Network
   /// @param _token Address of the token held by the network to be auctioned

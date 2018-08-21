@@ -137,7 +137,7 @@ contract IReputationMiningCycle {
   /// @param round The round that the hash is currently in.
   /// @param index The index in the round that the hash is currently in
   /// @param jrh The JRH being submitted
-  /// @param branchMask1 The branchmask for the Merkle proof that the currently accepted reputation state (given by `ColonyNetwork.getReputationRootHash()` + `ColonyNetwork.getReputationRootHashNNodes()`, where `+` is concatenation) is at key 0x000..000 in the submitted JRH
+  /// @param branchMask1 The branchmask for the Merkle proof that the currently accepted reputation state (given by `rootHash` + `nNodes` from `ColonyNetwork.getReputationRootHash()`, where `+` is concatenation) is at key 0x000..000 in the submitted JRH
   /// @param siblings1 The siblings for the same Merkle proof
   /// @param branchMask2 The branchmask for the Merkle proof that the proposed new reputation state is at the key corresponding to the number of transactions expected in this update in the submitted JRH. This key should be the number of decay transactions plus the number of transactions the log indicates are to happen.
   /// @param siblings2 The siblings for the same Merkle proof
